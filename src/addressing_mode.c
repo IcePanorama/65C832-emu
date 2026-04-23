@@ -1,5 +1,45 @@
+#include <string.h>
+
 #include "addressing_mode.h"
 
-char addressing_mode_sym[NADDRESSING_MODES][8] = {
+char addr_mode_sym[NADDRESSING_MODES][8] = {
+    [AM_ABSOLUTE] = "a",
+    [AM_DIR_INDEXED_INDIR] = "(d,x)",
+    [AM_DIRECT] = "d",
     [AM_IMPLIED] = "i",
+    [AM_IMMEDIATE] = "#",
+    [AM_PC_RELATIVE_LONG] = "rl",
+    [AM_PC_RELATIVE] = "r",
+    [AM_STACK] = "s",
 };
+
+const char *addr_mode_names[NADDRESSING_MODES] = {
+    [AM_ABSOLUTE] = "AM_ABSOLUTE",
+    [AM_DIR_INDEXED_INDIR] = "AM_DIR_INDEXED_INDIR",
+    [AM_DIRECT] = "AM_DIRECT",
+    [AM_IMPLIED] = "AM_IMPLIED",
+    [AM_IMMEDIATE] = "AM_IMMEDIATE",
+    [AM_PC_RELATIVE_LONG] = "AM_PC_RELATIVE_LONG",
+    [AM_PC_RELATIVE] = "AM_PC_RELATIVE",
+    [AM_STACK] = "AM_STACK",
+};
+
+addressing_mode_t
+addr_mode_from_string (const char s[static 1])
+{
+    size_t i;
+    addressing_mode_t out = NADDRESSING_MODES;
+
+    for (i = 0; i < NADDRESSING_MODES; i++)
+    {
+        const char *curr_am_name = addr_mode_names[i];
+
+        if (strncmp (s, curr_am_name, strlen (curr_am_name)) == 0)
+        {
+            out = (addressing_mode_t)i;
+            break;
+        }
+    }
+
+    return out;
+}

@@ -43,12 +43,12 @@ main (void)
     {
         if ((file[pc] != 0xFF) && (opcode_matrix[file[pc]].opcode == 0xFF))
         {
-            printf ("0x%02"PRIX8"\n", file[pc]);
+            printf ("Unrecognized opcode: 0x%02"PRIX8"\n", file[pc]);
             break;
         }
 
         inst_print(&opcode_matrix[file[pc]]);
-        pc++;
+        pc += opcode_matrix[file[pc]].base_nbytes;
     }
 
     return EXIT_SUCCESS;
