@@ -28,8 +28,8 @@ SRC_DIR = src
 BIN_DIR = bin
 OBJ_FILES = \
 	main.o \
-	instruction.o \
-	addressing_mode.o
+	opcode.o \
+	addr_mode.o
 
 all: $(OBJ_FILES)
 	$(CC) $(CFLAGS) $(BIN_DIR)/*.o -o $(TARGET)

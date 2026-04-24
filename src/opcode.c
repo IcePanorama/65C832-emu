@@ -5,34 +5,53 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "instruction.h"
+#include "opcode.h"
 
 typedef enum df_type_e
 {
-    DF_OPCODE, DF_ADDR_MODE, DF_BASE_NBYTES, DF_BASE_NCYCLES, NDFTYPES
+    DF_MNEMONIC, DF_ADDR_MODE, DF_SIZE, DF_NCYCLES, NDFTYPES
 } df_type_t;
 
-instruction_t opcode_matrix[NINSTRUCTIONS];
+opcode_t opcode_matrix[NOPCODES];
+
+// FIXME: tmp, make global/fn instead
+uint8_t base_noperands[NADDRESSING_MODES] =
+{
+    [AM_ABSOLUTE] = 2,
+    [AM_DIR_INDEXED_INDIR] = 1,
+    [AM_DIRECT] = 1,
+    [AM_IMPLIED] = 0,
+    [AM_IMMEDIATE] = 1,
+    [AM_PC_RELATIVE_LONG] = 2,
+    [AM_PC_RELATIVE] = 1,
+    [AM_STACK] = 0,
+};
+
+static const char *sz_names[NOPERANDSIZES] = {
+    [OPS_FIXED] = "OPS_FIXED",
+    [OPS_A] = "OPS_A",
+    [OPS_XY] = "OPS_XY"
+};
 
 static const char *inst_fname = "opcodes.ini";
 
-static int proc_new_opcode (char in[static 1], char *mnemonic[static 1]);
-static int proc_datafield (char in[static 1], instruction_t i[static 1]);
+static int proc_new_opcode (char *in, uint8_t opcode[static 1]);
+static int proc_datafield (char in[static 1], opcode_t i[static 1]);
 static df_type_t proc_df_get_type (char in[static 1]);
-static int proc_df_opcode (char in[static 1], instruction_t i[static 1]);
-static int proc_df_addr_mode (char in[static 1], instruction_t i[static 1]);
+static int proc_df_mnemonic (char in[static 1], opcode_t i[static 1]);
+static int proc_df_addr_mode (char in[static 1], opcode_t i[static 1]);
+static int proc_df_size (char in[static 1], opcode_t o[static 1]);
 static int proc_df_read_u8 (char in[static 1], uint8_t out[static 1]);
-static int proc_df_base_nbytes (char in[static 1], instruction_t i[static 1]);
-static int proc_df_base_ncycles (char in[static 1], instruction_t i[static 1]);
+static int proc_df_ncycles (char in[static 1], opcode_t i[static 1]);
 
 int
-inst_init (void)
+op_init (void)
 {
     enum init_state_e { NEW_OPC, OPC_PARSE, NSTATES } state = NEW_OPC;
     FILE *fptr = NULL;
     int ret = 0;
 
-    memset (opcode_matrix, 0xFF, sizeof (instruction_t) * NINSTRUCTIONS);
+    memset (opcode_matrix, 0xFF, sizeof (opcode_t) * NOPCODES);
 
     fptr = fopen (inst_fname, "r");
     if (fptr == NULL)
@@ -43,29 +62,25 @@ inst_init (void)
 
     char line[256] = { 0 };
     char cpy[256];
-    instruction_t curr = { 0 };
+    opcode_t curr = { 0 };
     bool should_exit = false;
     while (fgets (line, sizeof (line), fptr))
     {
-        char *mnemonic;
-        char *ptr;
+        uint8_t opcode;
 
         strncpy (cpy, line, sizeof (line));
-        ptr = cpy;
 
         switch (state)
         {
             case NEW_OPC:
-               if (proc_new_opcode (cpy, &mnemonic) != 0)
+               if (proc_new_opcode (cpy, &opcode) != 0)
                 {
                     fprintf (stderr, "Malformed input: %s", line);
                     should_exit = true;
                     break;
                 }
 
-                strncpy (curr.mnemonic, mnemonic, MNEMONIC_LEN);
-                ptr += strlen (mnemonic) + 1;
-
+                curr.opcode = opcode;
                 state = (state + 1) % NSTATES;
 
                 break;
@@ -75,9 +90,10 @@ inst_init (void)
                     memcpy (
                         &opcode_matrix[curr.opcode],
                         &curr,
-                        sizeof (instruction_t)
+                        sizeof (opcode_t)
                     );
-                    memset (&curr, 0, sizeof (instruction_t));
+                    //op_print (&curr);
+                    memset (&curr, 0, sizeof (opcode_t));
 
                     state = (state + 1) % NSTATES;
                 }
@@ -103,11 +119,12 @@ inst_init (void)
 }
 
 int
-proc_new_opcode (char in[static 1], char *mnemonic[static 1])
+proc_new_opcode (char *in, uint8_t opcode[static 1])
 {
     char *tok;
     char *ptr;
     int ret = 0;
+    uintmax_t value = 0;
 
     tok = strchr (in, '[');
     if ((tok == NULL) || (*tok == '\0'))
@@ -124,14 +141,57 @@ proc_new_opcode (char in[static 1], char *mnemonic[static 1])
     else
     {
         *tok = '\0';
-        *mnemonic = ptr;
+    }
+
+    if (strncmp (ptr, "0x", 2) == 0)
+    {
+        ptr += 2;
+    }
+
+    tok = ptr;
+    while (*tok != '\0')
+    {
+        if (('0' <= *tok) && (*tok <= '9'))
+        {
+            value = (value << 4) + (*tok - '0');
+        }
+        else if (('a' <= *tok) && (*tok <= 'f'))
+        {
+            value = (value << 4) + (*tok - 'a' + 10);
+        }
+        else if (('A' <= *tok) && (*tok <= 'F'))
+        {
+            value = (value << 4) + (*tok - 'A' + 10);
+        }
+        else if ((*tok == '\n') || (*tok == '\r'))
+        {
+            break;
+        }
+        else
+        {
+            fprintf (stderr, "Malformed input (hex string expected): %s\n", ptr);
+            ret = -1;
+            break;
+        }
+
+        tok++;
+    }
+
+    if (value > UINT8_MAX)
+    {
+        fprintf (stderr, "Malformed opcode (given value too large): %s (255 max)", ptr);
+        ret = -1;
+    }
+    else
+    {
+        *opcode = (uint8_t)value;
     }
 
     return ret;
 }
 
 int
-proc_datafield (char in[static 1], instruction_t i[static 1])
+proc_datafield (char in[static 1], opcode_t o[static 1])
 {
     const df_type_t type = proc_df_get_type (in);
     char *data = strchr (in, '=');
@@ -157,29 +217,29 @@ proc_datafield (char in[static 1], instruction_t i[static 1])
 
     switch (type)
     {
-        case DF_OPCODE:
-            if (proc_df_opcode (data, i) != 0)
+        case DF_MNEMONIC:
+            if (proc_df_mnemonic (data, o) != 0)
             {
                 ret = -1;
             }
 
             break;
         case DF_ADDR_MODE:
-            if (proc_df_addr_mode (data, i) != 0)
+            if (proc_df_addr_mode (data, o) != 0)
             {
                 ret = -1;
             }
 
             break;
-        case DF_BASE_NBYTES:
-            if (proc_df_base_nbytes (data, i) != 0)
+        case DF_SIZE:
+            if (proc_df_size (data, o) != 0)
             {
                 ret = -1;
             }
 
             break;
-        case DF_BASE_NCYCLES:
-            if (proc_df_base_ncycles (data, i) != 0)
+        case DF_NCYCLES:
+            if (proc_df_ncycles (data, o) != 0)
             {
                 ret = -1;
             }
@@ -199,21 +259,21 @@ proc_df_get_type (char in[static 1])
 {
     df_type_t out = NDFTYPES;
 
-    if (strncmp (in, "opcode", 6) == 0)
+    if (strncmp (in, "mnemonic", 8) == 0)
     {
-        out = DF_OPCODE;
+        out = DF_MNEMONIC;
     }
     else if (strncmp (in, "addr_mode", 9) == 0)
     {
         out = DF_ADDR_MODE;
     }
-    else if (strncmp (in, "base_nbytes", 11) == 0)
+    else if (strncmp (in, "operand_sz", 10) == 0)
     {
-        out = DF_BASE_NBYTES;
+        out = DF_SIZE;
     }
-    else if (strncmp (in, "base_ncycles", 12) == 0)
+    else if (strncmp (in, "ncycles", 7) == 0)
     {
-        out = DF_BASE_NCYCLES;
+        out = DF_NCYCLES;
     }
     else
     {
@@ -224,57 +284,25 @@ proc_df_get_type (char in[static 1])
 }
 
 int
-proc_df_opcode (char in[static 1], instruction_t i[static 1])
+proc_df_mnemonic (char in[static 1], opcode_t o[static 1])
 {
-    int ret = 0;
-    uint8_t value = 0;
-    char *tmp = in;
+    const size_t len = strlen (in);
+    char *last_ch = &in[len - 1];
 
-    if (strncmp (tmp, "0x", 2) == 0)
+    if ((*last_ch == '\n') || (*last_ch == '\r'))
     {
-        tmp += 2;
+        *last_ch = '\0';
     }
 
-    while (*tmp != '\0')
-    {
-        if (('0' <= *tmp) && (*tmp <= '9'))
-        {
-            value = (value << 4) + (*tmp - '0');
-        }
-        else if (('a' <= *tmp) && (*tmp <= 'f'))
-        {
-            value = (value << 4) + (*tmp - 'a' + 10);
-        }
-        else if (('A' <= *tmp) && (*tmp <= 'F'))
-        {
-            value = (value << 4) + (*tmp - 'A' + 10);
-        }
-        else if ((*tmp == '\n') || (*tmp == '\r'))
-        {
-            break;
-        }
-        else
-        {
-            fprintf (stderr, "Malformed input (hex string expected): %s", in);
-            ret = -1;
-            break;
-        }
+    strncpy (o->mnemonic, in, len);
 
-        tmp++;
-    }
-
-    if (ret == 0)
-    {
-        i->opcode = value;
-    }
-
-    return ret;
+    return 0;
 }
 
 int
-proc_df_addr_mode (char in[static 1], instruction_t i[static 1])
+proc_df_addr_mode (char in[static 1], opcode_t o[static 1])
 {
-    const addressing_mode_t mode = addr_mode_from_string (in);
+    const addr_mode_t mode = addr_mode_from_string (in);
     int ret = 0;
 
     if (mode == NADDRESSING_MODES)
@@ -284,7 +312,26 @@ proc_df_addr_mode (char in[static 1], instruction_t i[static 1])
     }
     else
     {
-        i->addr_mode = mode;
+        o->addr_mode = mode;
+    }
+
+    return ret;
+}
+
+int
+proc_df_size (char in[static 1], opcode_t o[static 1])
+{
+    const operand_sz_t sz = op_get_sz_from_str (in);
+    int ret = 0;
+
+    if (sz == NOPERANDSIZES)
+    {
+        fprintf (stderr, "Malformed input (invalid operand size): %s", in);
+        ret = -1;
+    }
+    else
+    {
+        o->operand_sz = sz;
     }
 
     return ret;
@@ -347,25 +394,7 @@ proc_df_read_u8 (char in[static 1], uint8_t out[static 1])
 }
 
 int
-proc_df_base_nbytes (char in[static 1], instruction_t i[static 1])
-{
-    uint8_t nbytes;
-    int ret = 0;
-
-    if (proc_df_read_u8 (in, &nbytes) != 0)
-    {
-        ret = -1;
-    }
-    else
-    {
-        i->base_nbytes = nbytes;
-    }
-
-    return ret;
-}
-
-int
-proc_df_base_ncycles (char in[static 1], instruction_t i[static 1])
+proc_df_ncycles (char in[static 1], opcode_t o[static 1])
 {
     uint8_t ncycles;
     int ret = 0;
@@ -376,23 +405,60 @@ proc_df_base_ncycles (char in[static 1], instruction_t i[static 1])
     }
     else
     {
-        i->base_ncycles = ncycles;
+        o->ncycles = ncycles;
     }
 
     return ret;
 }
 
 void
-inst_print (instruction_t i[static 1])
+op_print (opcode_t o[static 1])
 {
-    const char *addr_mode = addr_mode_sym[i->addr_mode];
+    const char *addr_mode = addr_mode_sym[o->addr_mode];
 
     printf (
-        "0x%02"PRIX8" - %s [%s] nbytes: %"PRIu8", ncycles: %"PRIu8"\n",
-        i->opcode,
-        i->mnemonic,
+        "0x%02"PRIX8" - %s [%s] ncycles: %"PRIu8"\n", 
+        o->opcode, 
+        o->mnemonic,
         addr_mode,
-        i->base_nbytes,
-        i->base_ncycles
+        o->ncycles
     );
+}
+
+// FIXME: A register can be diff size from X/Y, chage res based on operand sz
+uint8_t
+op_get_noperands (const opcode_t o[static 1])
+{
+    uint8_t res;
+
+    switch (o->addr_mode)
+    {
+#if 0
+        case AM_IMMEDIATE:
+            return 2; // FIXME: should not be hardcoded
+#endif /* 0 */
+        default:
+            res = base_noperands[o->addr_mode];
+            break;
+    };
+
+    return res;
+}
+
+// FIXME: Could be static?
+operand_sz_t
+op_get_sz_from_str (const char s[static 1])
+{
+    operand_sz_t out = NOPERANDSIZES;
+
+    for (size_t i = 0; i < NOPERANDSIZES; i++)
+    {
+        if (strncmp (s, sz_names[i], strlen (sz_names[i])) == 0)
+        {
+            out = (operand_sz_t)i;
+            break;
+        }
+    }
+
+    return out;
 }

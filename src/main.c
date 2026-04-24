@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#include "instruction.h"
+#include "opcode.h"
 
 enum
 {
@@ -11,6 +11,8 @@ enum
 };
 
 static const char *input = "blink.bin";
+
+//static uint8_t get_pc_inc (const opcode_t o[static 1]);
 
 int
 main (void)
@@ -32,7 +34,7 @@ main (void)
         return EXIT_FAILURE;
     }
 
-    if (inst_init() != 0)
+    if (op_init() != 0)
     {
         fprintf (stderr, "Failed to initialize instruction data\n");
         return EXIT_FAILURE;
@@ -41,15 +43,35 @@ main (void)
     uint16_t pc = 0;
     while (pc < INPUT_FILE_SIZE_B)
     {
-        if ((file[pc] != 0xFF) && (opcode_matrix[file[pc]].opcode == 0xFF))
+        opcode_t *curr = &opcode_matrix[file[pc]];
+        if ((file[pc] != 0xFF) && (curr->opcode == 0xFF))
         {
             printf ("Unrecognized opcode: 0x%02"PRIX8"\n", file[pc]);
             break;
         }
 
-        inst_print(&opcode_matrix[file[pc]]);
-        pc += opcode_matrix[file[pc]].base_nbytes;
+        //printf ("PC: 0x%04"PRIX16"\n", pc);
+        op_print(curr);
+
+        uint8_t noperands = op_get_noperands (curr);
+        pc++;
+
+        for (size_t i = 0; i < noperands; i++, pc++)
+        {
+            printf ("Skipped byte: 0x%02"PRIX8"\n", file[pc]);
+        }
     }
 
     return EXIT_SUCCESS;
 }
+
+#if 0 // FIXME: This is needed for execution, not decoding.
+uint8_t
+get_pc_inc (const opcode_t o[static 1])
+{
+    if (o->opcode == 0x00) return 2; // BRK
+    if (o->opcode == 0x02) return 2; // COP (65816)
+
+    return 1 + op_get_noperands (curr);
+}
+#endif /* 0 */
