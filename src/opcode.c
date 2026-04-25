@@ -433,10 +433,23 @@ op_get_noperands (const opcode_t o[static 1])
 
     switch (o->addr_mode)
     {
-#if 0
         case AM_IMMEDIATE:
-            return 2; // FIXME: should not be hardcoded
-#endif /* 0 */
+            switch (o->operand_sz)
+            {
+                case OPS_A:
+                    res = 1;
+                    break;
+                case OPS_XY:
+                    res = 4;
+                    break;
+                case OPS_FIXED:
+                    // fall through
+                default:
+                    res = 1;
+                    break;
+            }
+
+            break;
         default:
             res = base_noperands[o->addr_mode];
             break;
