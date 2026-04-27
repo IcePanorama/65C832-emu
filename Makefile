@@ -29,7 +29,8 @@ BIN_DIR = bin
 OBJ_FILES = \
 	main.o \
 	opcode.o \
-	addr_mode.o
+	addr_mode.o \
+	utils.o
 
 all: $(OBJ_FILES)
 	$(CC) $(CFLAGS) $(BIN_DIR)/*.o -o $(TARGET)
@@ -39,7 +40,7 @@ all: $(OBJ_FILES)
 	$(CC) $(CFLAGS) -c -o$(BIN_DIR)/$@ $^
 
 leak-check: all
-	$(LEAK_CHKR) --leak-check=$(LEAK_LVL) ./$(TARGET)
+	$(LEAK_CHKR) --leak-check=$(LEAK_LVL) ./$(TARGET) test-inputs/simple.bin
 
 format:
 	$(AUTO_FMT) -style=$(FMT_STYLE) -i $(SRC_DIR)/*.c $(SRC_DIR)/*.h
