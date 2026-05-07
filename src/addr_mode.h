@@ -5,24 +5,19 @@
 
 enum
 {
-    AM_SYM_LEN = 8
+    AM_NAME_MAX_LEN = 32,
+    AM_SYM_MAX_LEN = 8,
 };
 
-typedef enum addr_mode_e
+typedef struct addr_mode_s
 {
-    AM_ABSOLUTE,
-    AM_DIR_INDEXED_INDIR,
-    AM_DIRECT,
-    AM_IMPLIED,
-    AM_IMMEDIATE,
-    AM_PC_RELATIVE_LONG,
-    AM_PC_RELATIVE,
-    AM_STACK,
-    NADDRESSING_MODES
+    char name[AM_NAME_MAX_LEN];
+    char symbol[AM_SYM_MAX_LEN];
+    uint8_t noperands;
 } addr_mode_t;
 
-extern char addr_mode_sym[NADDRESSING_MODES][AM_SYM_LEN];
-
 addr_mode_t addr_mode_from_string (const char s[static 1]);
+
+int am_init (void);
 
 #endif /* _W65C832_ADDRESSING_MODE_H_ */

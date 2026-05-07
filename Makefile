@@ -30,6 +30,7 @@ OBJ_FILES = \
 	main.o \
 	opcode.o \
 	addr_mode.o \
+	ini.o \
 	utils.o
 
 all: $(OBJ_FILES)

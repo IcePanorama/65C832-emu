@@ -10,4 +10,10 @@ int u_load_bin_file (
     size_t fsize[restrict static 1]
 );
 
+int u_load_file_lines (
+    const char fpath[restrict static 1],
+    char **fdata[restrict static 1],
+    size_t nlines[restrict static 1]
+);
+
 #endif /* _W65C832_EMU_UTILITIES_ */

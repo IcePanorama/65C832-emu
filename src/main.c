@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdint.h>
 
+#include "addr_mode.h"
 #include "opcode.h"
 #include "utils.h"
 
@@ -30,13 +31,22 @@ main (int argc, char **argv)
         return EXIT_FAILURE;
     }
 
+    if (am_init () != 0)
+    {
+        fprintf (stderr, "Failed to initialize address mode data\n");
+        free (file);
+        return EXIT_FAILURE;
+    }
+
+    free (file);
+    return 0;
+
     if (op_init() != 0)
     {
         fprintf (stderr, "Failed to initialize instruction data\n");
         free (file);
         return EXIT_FAILURE;
     }
-
 
     uint16_t pc = 0;
     while (pc < fsize)
