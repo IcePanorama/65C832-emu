@@ -38,8 +38,6 @@ main (int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    free (file);
-    return 0;
 
     if (op_init() != 0)
     {
@@ -47,6 +45,9 @@ main (int argc, char **argv)
         free (file);
         return EXIT_FAILURE;
     }
+
+    free (file);
+    return 0;
 
     uint16_t pc = 0;
     while (pc < fsize)

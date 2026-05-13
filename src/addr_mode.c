@@ -107,7 +107,7 @@ proc_new_am (
     ret = ini_get_section_title (in, out);
     if (ret == 0)
     {
-        const size_t name_len = strlen (new_am_name) + 1;
+        const size_t name_len = strlen (out) + 1;
 
         if (name_len > AM_NAME_MAX_LEN)
         {
