@@ -106,7 +106,7 @@ int
 resize_fdata (char **fdata[restrict static 1], size_t max_lines[static 1])
 {
     const size_t new_max = *max_lines * 2;
-    char **tmp = realloc (*fdata, sizeof (char *) * new_max);
+    char **tmp = realloc (*fdata, sizeof (*tmp) * new_max);
     int ret = 0;
 
     if (tmp == NULL)

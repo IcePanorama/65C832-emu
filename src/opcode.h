@@ -1,6 +1,7 @@
 #ifndef _W65C832_INSTRUCTION_H_
 #define _W65C832_INSTRUCTION_H_
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #include "addr_mode.h"
@@ -27,6 +28,7 @@ typedef struct opcode_s
     addr_mode_t *addr_mode;
     operand_sz_t operand_sz;
     uint8_t ncycles;
+    bool reserved; // mnemonic = WDM means "Reserved for Future Use"
 } opcode_t;
 
 extern opcode_t opcode_matrix[NOPCODES];

@@ -262,7 +262,7 @@ int
 proc_sym_df (
     const char value[restrict static 1], addr_mode_t am[restrict static 1])
 {
-    const size_t val_len = strlen (value) + 1;
+    const size_t val_len = strlen (value);
     int ret = 0;
 
     if (val_len > AM_SYM_MAX_LEN)

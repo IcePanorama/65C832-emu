@@ -35,6 +35,9 @@ static const char *sz_toks[NOPERANDSIZES] =
     [OPS_XY]    = "OPS_XY",
 };
 static const size_t largest_sz_tok_len = 9;  // = strlen (sz_toks[OPS_FIXED]);
+// FIXME: Implement more reserved opcodes!!!
+static const uint8_t reserved_opcodes[] = { 0x41 };
+static const size_t nreserved_opcodes = sizeof (reserved_opcodes);
 
 static int process_line (char line[restrict static 1]);
 static int proc_new_op (char in[restrict static 1], uint8_t opcode[restrict static 1]);
@@ -49,6 +52,15 @@ static int proc_ncycles_df (char value[restrict static 1], uint8_t ncycles[restr
 int
 op_init (void)
 {
+    size_t i;
+
+    memset (opcode_matrix, 0xFF, sizeof (opcode_t));
+
+    for (i = 0; i < nreserved_opcodes; i++)
+    {
+        opcode_matrix[reserved_opcodes[i]].reserved = true;
+    }
+
     if (ini_process_file (inst_fname, &process_line) != 0)
     {
         return -1;
@@ -78,7 +90,6 @@ process_line (char line[restrict static 1])
         else
         {
             curr.opcode = op;
-            is_new_op = true;
             is_new_op = false;
         }
     }
@@ -86,8 +97,9 @@ process_line (char line[restrict static 1])
     {
         if ((*cpy == '\n') || (*cpy == '\r'))
         {
-            opcode_matrix[curr.opcode] = curr;
+            memcpy (&opcode_matrix[curr.opcode], &curr, sizeof (opcode_t));
             is_new_op = true;
+            memset (&curr, 0, sizeof (curr));
         }
         else if (proc_df (cpy, &curr) != 0)
         {
@@ -125,7 +137,7 @@ proc_new_op (
 
         op_size = strlen (tmp);
 
-        if (op_size > 4)
+        if (op_size > 2)
         {
             fprintf (stderr,
                 "Given op code is too long to fit in a "
@@ -146,9 +158,8 @@ proc_new_op (
         *opcode = op;
     }
 
-    return 0;
+    return ret;
 }
-
 
 int
 str_to_u8 (
@@ -157,7 +168,7 @@ str_to_u8 (
 {
     int ret = 0;
     char *tmp = s;
-    uint8_t out = 0;
+    uintmax_t out = 0;
 
     while (*tmp != '\0')
     {
@@ -165,15 +176,15 @@ str_to_u8 (
 
         if (('0' <= *tmp) && (*tmp <= '9'))
         {
-            out |= *tmp - '0';
+            out += *tmp - '0';
         }
         else if (('a' <= *tmp) && (*tmp <= 'f'))
         {
-            out |= *tmp - 'a';
+            out += *tmp - 'a' + 10;
         }
         else if (('A' <= *tmp) && (*tmp <= 'F'))
         {
-            out |= *tmp - 'A';
+            out += *tmp - 'A' + 10;
         }
         else
         {
@@ -192,7 +203,20 @@ str_to_u8 (
 
     if (ret == 0)
     {
-        *u8 = out;
+        if (out > UINT8_MAX)
+        {
+            fprintf (
+                stderr,
+                "Invalid opcode: 0x%02"PRIXMAX" > 0x%02"PRIX8"\n",
+                out,
+                UINT8_MAX
+            );
+            ret = -1;
+        }
+        else
+        {
+            *u8 = (uint8_t)out;
+        }
     }
 
     return ret;
@@ -296,10 +320,10 @@ proc_mnemonic_df (
     char mnemonic[restrict static OP_MNEMONIC_LEN]
 )
 {
-    const size_t val_len = strlen (value);
+    const size_t val_len = strlen (value) + 1;
     int ret = 0;
 
-    if (val_len >= OP_MNEMONIC_LEN)
+    if (val_len > OP_MNEMONIC_LEN)
     {
         fprintf (
             stderr,
@@ -421,3 +445,9 @@ proc_ncycles_df (
     return ret;
 }
 
+#if 0   // LO: Implement me!
+uint8_t
+op_get_noperands (const opcode_t o[static 1])
+{
+}
+#endif /* 0 */
