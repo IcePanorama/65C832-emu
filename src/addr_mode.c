@@ -134,8 +134,10 @@ void
 am_print (const addr_mode_t am[restrict static 1])
 {
     fprintf (stdout,
-        "%s { symbol = %s, noperands = %"PRIu8" } \n",
+        "%-*s { symbol = %*s, noperands = %3"PRIu8" } \n",
+        AM_NAME_MAX_LEN,
         am->name,
+        AM_SYM_MAX_LEN,
         am->symbol,
         am->noperands
     );
@@ -302,7 +304,7 @@ proc_noperands_df (
         {
             fprintf (
                 stderr,
-                "Value exceeds limit: %"PRIdMAX" vs %"PRId8"\n", 
+                "Value exceeds limit: %"PRIuMAX" vs %"PRIu8"\n",
                 nops,
                 UINT8_MAX
             );

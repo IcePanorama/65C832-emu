@@ -203,7 +203,7 @@ op_print (const opcode_t o[restrict static 1])
 {
     fprintf (stdout,
         "%s %-*s { opcode = 0x%02"PRIX8", operand_sz = %*s"
-        ", ncycles = %3"PRId8" }\n",
+        ", ncycles = %3"PRIu8" }\n",
         o->mnemonic,
         AM_SYM_MAX_LEN,
         o->addr_mode->symbol,
@@ -406,7 +406,7 @@ proc_ncycles_df (
         {
             fprintf (
                 stderr,
-                "Invalid ncycles value: %"PRIdMAX" > %"PRId8"\n",
+                "Invalid ncycles value: %"PRIuMAX" > %"PRIu8"\n",
                 out,
                 UINT8_MAX
             );
