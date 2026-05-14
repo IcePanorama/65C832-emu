@@ -19,8 +19,9 @@ typedef enum am_df_type_e
     AMDFT_SYM, AMDFT_NOPERANDS, NAMDFTYPES
 } am_df_type_t;
 
+addr_mode_t am_map[ADDR_MODE_MAP_SIZE];
+
 static const char *am_fname = "addr_modes.ini";
-static addr_mode_t am_map[ADDR_MODE_MAP_SIZE];
 static const uint8_t am_uninitd_val = UINT8_C(0xFF);
 static const char *df_toks[NAMDFTYPES] = {
     [AMDFT_SYM] = "sym", [AMDFT_NOPERANDS] = "noperands"
@@ -130,9 +131,9 @@ proc_new_am (
 }
 
 void
-print (addr_mode_t am[restrict static 1])
+am_print (const addr_mode_t am[restrict static 1])
 {
-    printf (
+    fprintf (stdout,
         "%s { symbol = %s, noperands = %"PRIu8" } \n",
         am->name,
         am->symbol,
@@ -143,8 +144,7 @@ print (addr_mode_t am[restrict static 1])
 int
 insert_new_am (const addr_mode_t am[restrict static 1])
 {
-    const size_t raw_hash = am_hash_name (am->name);
-    size_t new_idx = raw_hash % ADDR_MODE_MAP_SIZE;
+    size_t new_idx = am_hash_name (am->name);
     addr_mode_t *new = NULL;
     int ret = 0;
     size_t try;
@@ -179,14 +179,14 @@ insert_new_am (const addr_mode_t am[restrict static 1])
 size_t
 am_hash_name (const char name[restrict static 1])
 {
-    size_t hash = (size_t)5381;
+    size_t hash = (size_t)UINTMAX_C(5381);
 
     for (char c = *name; c != '\0'; c++)
     {
         hash = ((hash << 5) + hash) + c;
     }
 
-    return hash;
+    return hash % ADDR_MODE_MAP_SIZE;
 }
 
 int
@@ -316,3 +316,32 @@ proc_noperands_df (
 
     return ret;
 }
+
+addr_mode_t *
+addr_mode_from_string (const char s[static 1])
+{
+    const size_t slen = strlen (s);
+    size_t idx = am_hash_name (s);
+    addr_mode_t *out = NULL;
+    addr_mode_t *curr = &am_map[idx];
+    size_t try;
+
+    for (try = 0; try < ADDR_MODE_MAP_SIZE; try++)
+    {
+        if ((*(uint8_t *)curr) == am_uninitd_val)
+        {
+            break;
+        }
+        else if (strncmp (s, curr->name, slen) == 0)
+        {
+            out = curr;
+            break;
+        }
+
+        idx = (idx + 1) % ADDR_MODE_MAP_SIZE;
+        curr = &am_map[idx];
+    }
+
+    return out;
+}
+

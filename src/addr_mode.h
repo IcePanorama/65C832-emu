@@ -16,7 +16,8 @@ typedef struct addr_mode_s
     uint8_t noperands;
 } addr_mode_t;
 
-addr_mode_t addr_mode_from_string (const char s[static 1]);
+void am_print (const addr_mode_t am[restrict static 1]);
+addr_mode_t *addr_mode_from_string (const char s[static 1]);
 
 int am_init (void);
 

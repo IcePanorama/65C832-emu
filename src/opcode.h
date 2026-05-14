@@ -24,7 +24,7 @@ typedef struct opcode_s
 {
     uint8_t opcode;
     char mnemonic[OP_MNEMONIC_LEN];
-    addr_mode_t addr_mode;
+    addr_mode_t *addr_mode;
     operand_sz_t operand_sz;
     uint8_t ncycles;
 } opcode_t;
@@ -32,7 +32,7 @@ typedef struct opcode_s
 extern opcode_t opcode_matrix[NOPCODES];
 
 int op_init (void);
-void op_print (opcode_t o[static 1]);
+void op_print (const opcode_t o[restrict static 1]);
 uint8_t op_get_noperands (const opcode_t o[static 1]);
 operand_sz_t op_get_sz_from_str (const char s[static 1]);
 
