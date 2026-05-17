@@ -9,6 +9,7 @@
 enum
 {
     OP_MNEMONIC_LEN = 4,
+    OP_CODE_LEN = 64,
     NOPCODES = 256,
 };
 
@@ -28,6 +29,8 @@ typedef struct opcode_s
     addr_mode_t *addr_mode;
     operand_sz_t operand_sz;
     uint8_t ncycles;
+    // FIXME: Duplicated when it's the same per MNEMONIC
+    char code[OP_CODE_LEN];
     bool reserved; // mnemonic = WDM means "Reserved for Future Use"
 } opcode_t;
 

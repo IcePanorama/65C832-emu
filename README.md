@@ -1,5 +1,18 @@
 # 65c832 Emu
 
+## TODO
++ [ ] Create operation.ini file that links mnemoics to an operation
+    + [ ] Add "flags affected" datafield to those operations.
+
+## Opcode `code` built-ins meaning:
++ M = immediate mask operand
++ Ms = memory addressed by stack pointer (S)
++ Mx = memory addressed/indexed by X
+
+Codes with a semicolon are processed in their same left to right order as written.
+
+Describe as "a right-to-left evaluated postfix notation".
+
 ## Random development notes
 
 + the BRK (and possibly COP too) are listed as having a "base no. bytes" of 2,

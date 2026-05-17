@@ -15,6 +15,7 @@ typedef enum oc_df_type_e
     OCDFT_ADDR_MODE,
     OCDFT_OPERAND_SZ,
     OCDFT_NCYCLES,
+    OCDFT_CODE,
     NOCDFTYPES
 } oc_df_type_t;
 
@@ -27,6 +28,7 @@ static const char *df_toks[NOCDFTYPES] =
     [OCDFT_ADDR_MODE]  = "addr_mode",
     [OCDFT_OPERAND_SZ] = "operand_sz",
     [OCDFT_NCYCLES]    = "ncycles",
+    [OCDFT_CODE] = "code",
 };
 static const char *sz_toks[NOPERANDSIZES] =
 {
@@ -48,6 +50,7 @@ static int proc_mnemonic_df (const char value[restrict static 1], char mnemonic[
 static int proc_addr_mode_df (const char value[restrict static 1], addr_mode_t *am[restrict static 1]);
 static int proc_operand_sz_df (const char value[restrict static 1], operand_sz_t sz[restrict static 1]);
 static int proc_ncycles_df (char value[restrict static 1], uint8_t ncycles[restrict static 1]);
+static int proc_code_df (char value[restrict static 1], char code[restrict static OP_CODE_LEN]);
 
 int
 op_init (void)
@@ -227,14 +230,15 @@ op_print (const opcode_t o[restrict static 1])
 {
     fprintf (stdout,
         "%s %-*s { opcode = 0x%02"PRIX8", operand_sz = %*s"
-        ", ncycles = %3"PRIu8" }\n",
+        ", ncycles = %3"PRIu8", code = \"%s\" }\n",
         o->mnemonic,
         AM_SYM_MAX_LEN,
         o->addr_mode->symbol,
         o->opcode,
         (int)largest_sz_tok_len,
         sz_toks[o->operand_sz],
-        o->ncycles
+        o->ncycles,
+        o->code
     );
 }
 
@@ -283,6 +287,13 @@ proc_df (
                 break;
             case OCDFT_NCYCLES:
                 if (proc_ncycles_df (value, &o->ncycles) != 0)
+                {
+                    ret = -1;
+                }
+
+                break;
+            case OCDFT_CODE:
+                if (proc_code_df (value, o->code) != 0)
                 {
                     ret = -1;
                 }
@@ -445,9 +456,64 @@ proc_ncycles_df (
     return ret;
 }
 
-#if 0   // LO: Implement me!
+// FIXME: Hardcoded values
 uint8_t
 op_get_noperands (const opcode_t o[static 1])
 {
+    uint8_t mod = 0;
+
+    switch (o->operand_sz)
+    {
+        case OPS_FIXED:
+            break;
+        case OPS_A:
+            mod = 0; // FIXME: Assuming 8-bit accumulator
+            break;
+        case OPS_XY:
+            mod = 3; // FIXME: Assuming 32-bit x/y registers
+            break;
+        case NOPERANDSIZES:
+        default:
+            assert (false); // should never reach here.
+    }
+
+    return o->addr_mode->noperands + mod;
 }
-#endif /* 0 */
+
+int
+proc_code_df (
+    char value[restrict static 1], char code[restrict static OP_CODE_LEN]
+)
+{
+    const size_t vlen = strlen (value);
+    char tmp[OP_CODE_LEN] = { 0 };
+    char *start;
+    char *end;
+
+    strncpy (tmp, value, OP_CODE_LEN);
+
+    end = &tmp[vlen - 1];
+    while (
+        (end >= tmp)
+        && (
+            (*end == '\n')
+            || (*end == '\r')
+            || (*end == '\"')
+            || (*end == '\'')
+        )
+    )
+    {
+        *end = '\0';
+        end--;
+    }
+
+    start = tmp;
+    if ((*start == '\"') || (*start == '\''))
+    {
+        start++;
+    }
+
+    strncpy (code, start, OP_CODE_LEN);
+
+    return 0;
+}
