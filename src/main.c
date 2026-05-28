@@ -6,6 +6,7 @@
 
 #include "addr_mode.h"
 #include "opcode.h"
+#include "opmatrix.h"
 #include "utils.h"
 
 enum
@@ -30,21 +31,6 @@ main (int argc, char **argv)
 
     if (u_load_bin_file (argv[1], &file, &fsize) != 0)
     {
-        return EXIT_FAILURE;
-    }
-
-    if (am_init () != 0)
-    {
-        fprintf (stderr, "Failed to initialize address mode data\n");
-        free (file);
-        return EXIT_FAILURE;
-    }
-
-
-    if (op_init() != 0)
-    {
-        fprintf (stderr, "Failed to initialize instruction data\n");
-        free (file);
         return EXIT_FAILURE;
     }
 

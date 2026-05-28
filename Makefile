@@ -29,6 +29,7 @@ BIN_DIR = bin
 OBJ_FILES = \
 	main.o \
 	opcode.o \
+	opmatrix.o \
 	addr_mode.o \
 	ini.o \
 	utils.o
