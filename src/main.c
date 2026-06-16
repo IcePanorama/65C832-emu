@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <inttypes.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -5,6 +6,7 @@
 #include <string.h>
 
 #include "addr_mode.h"
+#include "cpu.h"
 #include "opcode.h"
 #include "opmatrix.h"
 #include "utils.h"
@@ -14,15 +16,44 @@ enum
     INPUT_FILE_SIZE_B = 46,
 };
 
-static opcode_t *fetch_instruction (uint8_t *file, const uint16_t curr_pc, uint16_t new_pc[restrict static 1]);
-//static uint8_t get_pc_inc (const opcode_t o[restrict static 1]);
+uint8_t *file;
+size_t fsize;
+
+static uint8_t
+read (uint8_t pbr, uint16_t pc)
+{
+    uint32_t addr = (uint32_t)pbr << 16;
+    addr |= pc;
+
+    assert (pc < fsize);
+
+    return file[pc]; // FIXME: Should be reading at addr, not curr impl'd
+    (void)addr;
+}
+
+// FIXME: Make this cycle accurate
+static void
+reset (w65c832_cpu_t cpu[restrict static 1])
+{
+    cpu->pbr = 0;
+    cpu->pc = 0; // FIXME should actually read reset vector at 0xFFFC,D
+}
+
+static void
+fetch (w65c832_cpu_t cpu[restrict static 1])
+{
+    uint8_t opcode = read (cpu->pbr, cpu->pc);
+    cpu->pc++;
+
+    cpu->ins = &opcode_matrix[opcode];
+
+    cpu->icycle = 0;
+    return;
+}
 
 int
 main (int argc, char **argv)
 {
-    uint8_t *file;
-    size_t fsize;
-
     if (argc < 2)
     {
         fprintf (stderr, "Improper usage error: no filename provided.\n");
@@ -34,46 +65,17 @@ main (int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    uint16_t pc = 0;
-    while (pc < fsize)
+    bool should_exit = false;
+    w65c832_cpu_t cpu;
+    reset (&cpu);
+    while (!should_exit)
     {
-        opcode_t *op = NULL;
-        uint16_t new_pc;
-        op = fetch_instruction (file, pc, &new_pc);
-        op_print (op);
-
-        if (strlen (op->code) == 0)
-        {
-            break;
-        }
-
-        (void)new_pc; // fixme: tmp
-
-        uint8_t noperands = op_get_noperands (op);
-        pc++;
-
-        for (size_t i = 0; i < noperands; i++, pc++)
-        {
-            printf ("Skipped byte: 0x%02"PRIX8"\n", file[pc]);
-        }
+        fetch (&cpu);
+        op_print (cpu.ins);
+        // See Instruction Operation table for cycle by cycle next steps.
+        should_exit = true;
     }
 
     free (file);
     return EXIT_SUCCESS;
-}
-
-/** Fetches the current opcode and increments `pc`. */
-opcode_t *
-fetch_instruction (
-    uint8_t *file,
-    const uint16_t curr_pc,
-    uint16_t new_pc[restrict static 1]
-)
-{
-    const uint8_t curr_byte = file[curr_pc];
-    //printf ("Curr byte: %d\n", curr_byte);
-    opcode_t *out = &opcode_matrix[curr_byte];
-
-    return out;
-    (void)new_pc;
 }

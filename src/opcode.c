@@ -22,16 +22,13 @@ void
 op_print (const opcode_t o[restrict static 1])
 {
     fprintf (stdout,
-        "%s %-*s { opcode = 0x%02"PRIX8", operand_sz = %*s"
-        ", ncycles = %3"PRIu8", code = \"%s\" }\n",
+        "%s %-*s { operand_sz = %*s, ncycles = %3"PRIu8" }\n",
         o->mnemonic,
         AM_SYM_MAX_LEN,
         am_syms[o->addr_mode],
-        o->opcode,
         (int)largest_sz_tok_len,
         sz_toks[o->operand_sz],
-        o->ncycles,
-        o->code
+        o->ncycles
     );
 }
 
